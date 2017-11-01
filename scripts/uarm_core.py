@@ -13,7 +13,7 @@
 '''
 
 
-# All libraries needed to import 
+# All libraries needed to import
 # Import system library
 import sys
 import time
@@ -49,7 +49,7 @@ def readCurrentAngles():
 	ra['s2'] = uarm.get_servo_angle(1)
 	ra['s3'] = uarm.get_servo_angle(2)
 	ra['s4'] = uarm.get_servo_angle(3)
-	
+
 	print 'Four Servo Angles: %2.2f, %2.2f, %2.2f and %2.2f degrees.' %(ra['s1'], ra['s2'],ra['s3'],ra['s4'])
 
 	rospy.set_param('servo_1',ra['s1'])
@@ -74,7 +74,7 @@ def readStopperStatus():
 def connectFcn():
 
 	global failed_number
-	global connectionStatus 
+	global connectionStatus
 	connectionStatus = 0
 	global uarm
 	global controlFcnLoop
@@ -99,7 +99,7 @@ def connectFcn():
 		if len(sys.argv) == 2:
 			failed_number = 21
 			uarm = pyuarm.get_uarm()
-			
+
 			connectionStatus = 1
 
 			print 'Connected'
@@ -133,7 +133,7 @@ def connectFcn():
 				return 25
 			return 23
 
-		else: 
+		else:
 			# 2 means input argument is wrong
 			return 24
 	#if sys.argv[1] == 'd'
@@ -173,21 +173,21 @@ def controlFcn():
 
 			print ' '
 
-		elif commands == 'e': 
+		elif commands == 'e':
 			print 'Exit: Break the control fuction loop'
 			break;
-			
-		elif commands == 'exit': 
+
+		elif commands == 'exit':
 			print 'Detach all servos and exit the program'
 			uarm.set_servo_detach()
 			sys.exit(0)
 
 		elif len(commands) == 0:
 			print 'len is 0'
-		
+
 		else:
 			commands_split = commands.split()
-			
+
 			# Detach
 			if commands_split[0] == 'detach'or commands_split[0] == 'de':
 				if len(commands_split) == 1:
@@ -195,7 +195,7 @@ def controlFcn():
 				else:
 					print 'no other commands should be input'
 				pass
-			
+
 			# Attach
 			if commands_split[0] == 'attach'or commands_split[0] == 'at':
 				if len(commands_split) == 1:
@@ -239,7 +239,7 @@ def controlFcn():
 			elif commands_split[0] == 'writeAngles' or commands_split[0] == 'wa':
 				if len(commands_split) == 5:
 					a = {}
-					a['s1'] = int(commands_split[1]) 
+					a['s1'] = int(commands_split[1])
 					a['s2'] = int(commands_split[2])
 					a['s3'] = int(commands_split[3])
 					a['s4'] = int(commands_split[4])
@@ -303,7 +303,7 @@ def controlFcn():
 					print 'Input incorrects'
 			else:
 				pass
-			
+
 # pump control function once received data from topic
 def pumpCallack(data):
 
@@ -324,7 +324,7 @@ def pumpStrCallack(data):
 
 	data_input = data.data
 	print data_input
-	
+
 	if data_input.lower() == 'low' or data_input.lower() == 'off':
 		uarm.set_pump(0)
 		print 'Pump: Off'
@@ -358,7 +358,7 @@ def writeAnglesCallback(servos):
 # attach or detach uarm function once received data from topic
 def attchCallback(attachStatus):
 	data_input = attachStatus.data
-	
+
 	if data_input.lower() == 'attach' :
 		uarm.set_servo_attach()
 		print 'uArm: Attach'
@@ -371,14 +371,22 @@ def attchCallback(attachStatus):
 
 # move to function once received data from topic
 def moveToCallback(coords):
-	x = coords.x
-	y = coords.y
-	if y<0:
-		y = -y
-	z = coords.z
-	uarm.set_position(x, y, z)
-	print 'Movement: Moved Once' 
+    x = coords.x
+    y = coords.y
+    if y < 0:
+        y = 0
+	print 'y must be > 0, so y = 0'
+    z = coords.z
+    uarm.set_position(x, y, z)
+    print 'Movement: Moved Once'
 
+# move to function once received data from topic
+def moveToRelativeCallback(coords):
+    x = coords.x
+    y = coords.y
+    z = coords.z
+    uarm.set_position(x, y, z, speed=300, relative=True)
+    print 'Movement: Moved Once Relative'
 
 # moveto functions once received data from topic
 def moveToTimeCallback(coordsAndT):
@@ -393,7 +401,7 @@ def moveToTimeCallback(coordsAndT):
 	else:
 		uarm.set_position(x, y, z, time)
 
-	print 'Movement: Moved Once' 
+	print 'Movement: Moved Once'
 	print 'Move to x: %2.2f, y: %2.2f, z: %2.2f.' %(float(x), float(y), float(z))
 	pass
 
@@ -412,7 +420,7 @@ def moveToTimeAndS4Callback(coordsAndTS4):
 	if s4 <0 : s4 =0
 	uarm.set_position(x, y, z, time)
 	uarm.set_servo_angle(3,s4)
-	print 'Movement: Moved Once' 
+	print 'Movement: Moved Once'
 	pass
 
 
@@ -464,7 +472,7 @@ def listener():
 	print '======================================================='
 	print '         Use rqt_graph to check the connection         '
 	print '======================================================='
-	
+
 	rospy.init_node('uarm_core',anonymous=True)
 
 	rospy.Subscriber("uarm_status",String, attchCallback)
@@ -474,9 +482,10 @@ def listener():
 	rospy.Subscriber("read_coords",Int32, currentCoordsCallback)
 	rospy.Subscriber("read_angles",Int32, readAnglesCallback)
 	rospy.Subscriber("stopper_status",Int32, stopperStatusCallback)
-	
+
 	rospy.Subscriber("write_angles",Angles, writeAnglesCallback)
 	rospy.Subscriber("move_to",Coords, moveToCallback)
+	rospy.Subscriber("move_to_relative", Coords, moveToRelativeCallback)
 	rospy.Subscriber("move_to_time",CoordsWithTime, moveToTimeCallback)
 	rospy.Subscriber("move_to_time_s4",CoordsWithTS4, moveToTimeAndS4Callback)
 
@@ -494,7 +503,7 @@ def processFailedNum(failed_number):
 
 
 if __name__ == '__main__':
-	
+
 	try:
 		# Connect uarm first
 		return_value = connectFcn()
@@ -506,7 +515,7 @@ if __name__ == '__main__':
 		if listenerFcn == True:
 			listener()
 
-	except:	
+	except:
 		processFailedNum(failed_number)
 		print 'ERROR: Execution Failed'
 		pass
@@ -514,6 +523,3 @@ if __name__ == '__main__':
 	finally:
 		print 'DONE: Program Stopped'
 		pass
-	
-
-
